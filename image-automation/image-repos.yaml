@@ -1,0 +1,53 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: data-ingestion
+  namespace: flux-system
+spec:
+  image: azlpoolsacr.azurecr.io/data-ingestion
+  interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: pool-detection
+  namespace: flux-system
+spec:
+  image: azlpoolsacr.azurecr.io/pool-detection
+  interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: pool-design
+  namespace: flux-system
+spec:
+  image: azlpoolsacr.azurecr.io/pool-design
+  interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: contact-enrichment
+  namespace: flux-system
+spec:
+  image: azlpoolsacr.azurecr.io/contact-enrichment
+  interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: dashboard
+  namespace: flux-system
+spec:
+  image: azlpoolsacr.azurecr.io/dashboard
+  interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: foundry-local
+  namespace: flux-system
+spec:
+  image: azlpoolsacr.azurecr.io/foundry-local
+  interval: 5m

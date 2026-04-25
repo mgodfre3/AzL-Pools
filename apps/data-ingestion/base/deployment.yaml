@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-ingestion
+  namespace: pool-prospect
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: data-ingestion
+  template:
+    metadata:
+      labels:
+        app: data-ingestion
+    spec:
+      containers:
+        - name: data-ingestion
+          image: azlpoolsacr.azurecr.io/data-ingestion:0.1.0 # {"$imagepolicy": "flux-system:data-ingestion"}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: url
+            - name: ATTOM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-keys
+                  key: attom
+            - name: REDIS_URL
+              value: redis://redis-svc.pool-prospect.svc:6379
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10

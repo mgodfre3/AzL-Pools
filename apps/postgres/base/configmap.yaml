@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: pool-prospect
+data:
+  POSTGRES_DB: poolprospect

@@ -1,0 +1,17 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: pool-design-scaler
+  namespace: pool-prospect
+spec:
+  scaleTargetRef:
+    name: pool-design
+  minReplicaCount: 1
+  maxReplicaCount: 6
+  cooldownPeriod: 120
+  triggers:
+    - type: redis
+      metadata:
+        address: redis-svc.pool-prospect.svc:6379
+        listName: pool-design-queue
+        listLength: "5"

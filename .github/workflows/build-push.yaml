@@ -1,0 +1,46 @@
+name: Build & Push Images
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  REGISTRY: azlpoolsacr.azurecr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - data-ingestion
+          - pool-detection
+          - pool-design
+          - contact-enrichment
+          - dashboard
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR Login
+        run: az acr login --name azlpoolsacr
+
+      - name: Extract version
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY }}/${{ matrix.service }}:${{ steps.version.outputs.tag }} \
+            ./src/${{ matrix.service }}/
+          docker push ${{ env.REGISTRY }}/${{ matrix.service }}:${{ steps.version.outputs.tag }}

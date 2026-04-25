@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pool-detection
+  namespace: pool-prospect
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pool-detection
+  template:
+    metadata:
+      labels:
+        app: pool-detection
+    spec:
+      containers:
+        - name: pool-detection
+          image: azlpoolsacr.azurecr.io/pool-detection:0.1.0 # {"$imagepolicy": "flux-system:pool-detection"}
+          ports:
+            - containerPort: 8001
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: url
+            - name: BING_MAPS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-keys
+                  key: bing-maps
+            - name: REDIS_URL
+              value: redis://redis-svc.pool-prospect.svc:6379
+            - name: MODEL_PATH
+              value: /models/pool_detector.onnx
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "4"
+              memory: 8Gi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            periodSeconds: 10
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ml-models-pvc

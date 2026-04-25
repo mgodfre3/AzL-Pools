@@ -1,0 +1,123 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-postgres
+  namespace: flux-system
+spec:
+  interval: 10m
+  dependsOn:
+    - name: infrastructure
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/postgres/overlays/dev
+  prune: true
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-redis
+  namespace: flux-system
+spec:
+  interval: 10m
+  dependsOn:
+    - name: infrastructure
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/redis/overlays/dev
+  prune: true
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-foundry-local
+  namespace: flux-system
+spec:
+  interval: 10m
+  dependsOn:
+    - name: infrastructure
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/foundry-local/overlays/dev
+  prune: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-data-ingestion
+  namespace: flux-system
+spec:
+  interval: 10m
+  dependsOn:
+    - name: apps-postgres
+    - name: apps-redis
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/data-ingestion/overlays/dev
+  prune: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-pool-detection
+  namespace: flux-system
+spec:
+  interval: 10m
+  dependsOn:
+    - name: apps-redis
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/pool-detection/overlays/dev
+  prune: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-pool-design
+  namespace: flux-system
+spec:
+  interval: 10m
+  dependsOn:
+    - name: apps-foundry-local
+    - name: apps-redis
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/pool-design/overlays/dev
+  prune: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-contact-enrichment
+  namespace: flux-system
+spec:
+  interval: 10m
+  dependsOn:
+    - name: apps-postgres
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/contact-enrichment/overlays/dev
+  prune: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-dashboard
+  namespace: flux-system
+spec:
+  interval: 10m
+  dependsOn:
+    - name: apps-postgres
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/dashboard/overlays/dev
+  prune: true
