@@ -1,0 +1,31 @@
+{
+  "name": "azl-pools",
+  "displayName": "AzL Pools — AI Pool Prospecting Platform",
+  "publisher": "mgodfre3",
+  "version": "1.0.0",
+  "description": "AI-powered pool prospecting platform. Identifies high-value homes without swimming pools, generates custom pool designs using AI, enriches owner contact details from public records, and manages direct mail outreach campaigns.",
+  "categories": [
+    "AI + Machine Learning",
+    "Analytics"
+  ],
+  "offerType": "Azure Application",
+  "planType": "Managed Application",
+  "artifacts": [
+    {
+      "name": "mainTemplate",
+      "type": "Template",
+      "path": "arm/mainTemplate.json"
+    },
+    {
+      "name": "createUiDefinition",
+      "type": "Custom",
+      "path": "ui/createUiDefinition.json"
+    }
+  ],
+  "links": [
+    {
+      "displayName": "Documentation",
+      "uri": "https://github.com/mgodfre3/AzL-Pools"
+    }
+  ]
+}

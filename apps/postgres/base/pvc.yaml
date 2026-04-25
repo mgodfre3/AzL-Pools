@@ -1,2 +1,0 @@
-# PVC is handled via StatefulSet volumeClaimTemplates.
-# This file is a placeholder for any additional persistent volumes.

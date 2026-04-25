@@ -1,0 +1,135 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "config": {
+      "isWizard": true,
+      "basics": {
+        "description": "**AzL Pools** — AI-powered pool prospecting platform. Identifies high-value homes without pools, generates custom pool designs, and enriches owner contact details for direct outreach.",
+        "subscription": { "constraints": { "validations": [] } },
+        "resourceGroup": { "allowExisting": true }
+      }
+    },
+    "basics": [],
+    "steps": [
+      {
+        "name": "apiKeys",
+        "label": "API Keys",
+        "elements": [
+          {
+            "name": "infoBox",
+            "type": "Microsoft.Common.InfoBox",
+            "options": {
+              "text": "You'll need API keys from ATTOM Data and Bing Maps. Melissa Data is optional for contact enrichment.",
+              "style": "Info"
+            }
+          },
+          {
+            "name": "attomApiKey",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": { "password": "ATTOM Data API Key" },
+            "constraints": { "required": true },
+            "options": { "hideConfirmation": true }
+          },
+          {
+            "name": "bingMapsKey",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": { "password": "Bing Maps API Key" },
+            "constraints": { "required": true },
+            "options": { "hideConfirmation": true }
+          },
+          {
+            "name": "melissaApiKey",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": { "password": "Melissa Data API Key (optional)" },
+            "constraints": { "required": false },
+            "options": { "hideConfirmation": true }
+          }
+        ]
+      },
+      {
+        "name": "database",
+        "label": "Database",
+        "elements": [
+          {
+            "name": "dbPassword",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": { "password": "PostgreSQL Admin Password", "confirmPassword": "Confirm Password" },
+            "constraints": {
+              "required": true,
+              "regex": "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,128}$",
+              "validationMessage": "Must be 8-128 chars with uppercase, lowercase, and digit."
+            }
+          }
+        ]
+      },
+      {
+        "name": "ai",
+        "label": "AI Configuration",
+        "elements": [
+          {
+            "name": "aiInfo",
+            "type": "Microsoft.Common.InfoBox",
+            "options": {
+              "text": "Azure OpenAI is used for pool design generation. Leave blank to skip AI designs.",
+              "style": "Info"
+            }
+          },
+          {
+            "name": "azureOpenAiEndpoint",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Azure OpenAI Endpoint (optional)",
+            "constraints": { "required": false },
+            "defaultValue": ""
+          },
+          {
+            "name": "azureOpenAiKey",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": { "password": "Azure OpenAI API Key (optional)" },
+            "constraints": { "required": false },
+            "options": { "hideConfirmation": true }
+          },
+          {
+            "name": "azureOpenAiDeployment",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Model Deployment Name",
+            "defaultValue": "phi-4-mini",
+            "constraints": { "required": false }
+          }
+        ]
+      },
+      {
+        "name": "compute",
+        "label": "Compute",
+        "elements": [
+          {
+            "name": "functionPlanSku",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Function App Plan",
+            "defaultValue": "Elastic Premium EP1 (Recommended)",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                { "label": "Consumption (Y1) — pay per execution", "value": "Y1" },
+                { "label": "Elastic Premium EP1 (Recommended)", "value": "EP1" },
+                { "label": "Elastic Premium EP2 — higher memory", "value": "EP2" }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "attomApiKey": "[steps('apiKeys').attomApiKey]",
+      "bingMapsKey": "[steps('apiKeys').bingMapsKey]",
+      "melissaApiKey": "[coalesce(steps('apiKeys').melissaApiKey, '')]",
+      "dbPassword": "[steps('database').dbPassword]",
+      "azureOpenAiEndpoint": "[coalesce(steps('ai').azureOpenAiEndpoint, '')]",
+      "azureOpenAiKey": "[coalesce(steps('ai').azureOpenAiKey, '')]",
+      "azureOpenAiDeployment": "[coalesce(steps('ai').azureOpenAiDeployment, 'phi-4-mini')]",
+      "functionPlanSku": "[steps('compute').functionPlanSku]",
+      "location": "[location()]"
+    }
+  }
+}

@@ -16,11 +16,12 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
     ports:
-      - "6379:6379"
-    command: ["--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
 
 volumes:
   pgdata:

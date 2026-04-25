@@ -1,0 +1,196 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "baseName": {
+      "type": "string",
+      "defaultValue": "azlpools",
+      "metadata": { "description": "Base name for all resources" }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": { "description": "Azure region for deployment" }
+    },
+    "attomApiKey": {
+      "type": "securestring",
+      "metadata": { "description": "ATTOM Data Solutions API key for property data" }
+    },
+    "bingMapsKey": {
+      "type": "securestring",
+      "metadata": { "description": "Bing Maps API key for aerial imagery" }
+    },
+    "melissaApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": { "description": "Melissa Data API key for contact enrichment (optional)" }
+    },
+    "dbPassword": {
+      "type": "securestring",
+      "metadata": { "description": "PostgreSQL administrator password" }
+    },
+    "azureOpenAiEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": { "description": "Azure OpenAI endpoint URL (optional)" }
+    },
+    "azureOpenAiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": { "description": "Azure OpenAI API key (optional)" }
+    },
+    "azureOpenAiDeployment": {
+      "type": "string",
+      "defaultValue": "phi-4-mini",
+      "metadata": { "description": "Azure OpenAI model deployment name" }
+    },
+    "functionPlanSku": {
+      "type": "string",
+      "defaultValue": "EP1",
+      "allowedValues": ["Y1", "EP1", "EP2"],
+      "metadata": { "description": "Function App plan SKU. EP1+ recommended for ML workloads." }
+    }
+  },
+  "variables": {
+    "uniqueSuffix": "[uniqueString(resourceGroup().id, parameters('baseName'))]",
+    "storageName": "[concat(parameters('baseName'), 'st', variables('uniqueSuffix'))]",
+    "funcAppName": "[concat(parameters('baseName'), '-func-', variables('uniqueSuffix'))]",
+    "serverFarmName": "[concat(parameters('baseName'), '-plan-', variables('uniqueSuffix'))]",
+    "dbServerName": "[concat(parameters('baseName'), '-db-', variables('uniqueSuffix'))]",
+    "appInsightsName": "[concat(parameters('baseName'), '-ai-', variables('uniqueSuffix'))]",
+    "logWorkspaceName": "[concat(parameters('baseName'), '-log-', variables('uniqueSuffix'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2022-10-01",
+      "name": "[variables('logWorkspaceName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": { "name": "PerGB2018" },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logWorkspaceName'))]"
+      ],
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logWorkspaceName'))]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[variables('storageName')]",
+      "location": "[parameters('location')]",
+      "sku": { "name": "Standard_LRS" },
+      "kind": "StorageV2",
+      "properties": {
+        "supportsHttpsTrafficOnly": true,
+        "minimumTlsVersion": "TLS1_2"
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[variables('dbServerName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_B1ms",
+        "tier": "Burstable"
+      },
+      "properties": {
+        "version": "16",
+        "administratorLogin": "poolprospect",
+        "administratorLoginPassword": "[parameters('dbPassword')]",
+        "storage": { "storageSizeGB": 32 },
+        "backup": { "backupRetentionDays": 7, "geoRedundantBackup": "Disabled" },
+        "highAvailability": { "mode": "Disabled" }
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[concat(variables('dbServerName'), '/AllowAzureServices')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('dbServerName'))]"
+      ],
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[concat(variables('dbServerName'), '/poolprospect')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('dbServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-01-01",
+      "name": "[variables('serverFarmName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('functionPlanSku')]",
+        "tier": "[if(equals(parameters('functionPlanSku'), 'Y1'), 'Dynamic', 'ElasticPremium')]"
+      },
+      "kind": "linux",
+      "properties": { "reserved": true }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "name": "[variables('funcAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp,linux",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('serverFarmName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('dbServerName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('serverFarmName'))]",
+        "siteConfig": {
+          "linuxFxVersion": "Python|3.12",
+          "appSettings": [
+            { "name": "AzureWebJobsStorage", "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-01-01').keys[0].value)]" },
+            { "name": "FUNCTIONS_EXTENSION_VERSION", "value": "~4" },
+            { "name": "FUNCTIONS_WORKER_RUNTIME", "value": "python" },
+            { "name": "APPINSIGHTS_INSTRUMENTATIONKEY", "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).InstrumentationKey]" },
+            { "name": "DATABASE_URL", "value": "[concat('postgresql://poolprospect:', parameters('dbPassword'), '@', reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('dbServerName'))).fullyQualifiedDomainName, ':5432/poolprospect?sslmode=require')]" },
+            { "name": "ATTOM_API_KEY", "value": "[parameters('attomApiKey')]" },
+            { "name": "BING_MAPS_KEY", "value": "[parameters('bingMapsKey')]" },
+            { "name": "MELISSA_API_KEY", "value": "[parameters('melissaApiKey')]" },
+            { "name": "AZURE_OPENAI_ENDPOINT", "value": "[parameters('azureOpenAiEndpoint')]" },
+            { "name": "AZURE_OPENAI_KEY", "value": "[parameters('azureOpenAiKey')]" },
+            { "name": "AZURE_OPENAI_DEPLOYMENT", "value": "[parameters('azureOpenAiDeployment')]" },
+            { "name": "DETECTION_THRESHOLD", "value": "0.5" }
+          ],
+          "ftpsState": "Disabled"
+        },
+        "httpsOnly": true
+      }
+    }
+  ],
+  "outputs": {
+    "functionAppUrl": {
+      "type": "string",
+      "value": "[concat('https://', reference(resourceId('Microsoft.Web/sites', variables('funcAppName'))).defaultHostName)]"
+    },
+    "dbServerFqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('dbServerName'))).fullyQualifiedDomainName]"
+    }
+  }
+}

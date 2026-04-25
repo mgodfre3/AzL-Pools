@@ -2,39 +2,46 @@
 
 ## System Overview
 
-See the main [README](../README.md) for the architecture diagram.
+**Azure Functions** (Python v2) with **Durable Functions** orchestration,
+backed by Azure PostgreSQL, Azure Storage queues, and Azure OpenAI.
+
+```
+HTTP/Timer Trigger
+        │
+        ▼
+┌─────────────────────────────────────────────┐
+│  Durable Orchestrator (pipeline_orchestrator)│
+│                                             │
+│  1. ingest_county_activity   (ATTOM API)    │
+│  2. detect_pool_activity     (U-Net ONNX)   │  ← fan-out/fan-in
+│  3. generate_design_activity (Azure OpenAI)  │  ← fan-out/fan-in
+│  4. enrich_contact_activity  (Melissa API)   │  ← fan-out/fan-in
+└──────────────┬──────────────────────────────┘
+               │
+    ┌──────────┼──────────┐
+    ▼          ▼          ▼
+PostgreSQL   Storage   App Insights
+```
 
 ## Service Map
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| data-ingestion | 8000 | ATTOM API + county scraper, property data pipeline |
-| pool-detection | 8001 | Aerial imagery fetch + U-Net ONNX pool detection |
-| pool-design | 8002 | AI pool design generation via Foundry Local |
-| contact-enrichment | 8003 | Melissa/TLOxp skip-trace enrichment |
-| dashboard | 8080 | React frontend + FastAPI backend |
-| foundry-local | 5273 | Phi-4-mini LLM (CPU, OpenAI-compat API) |
-| postgres | 5432 | PostGIS database |
-| redis | 6379 | ARQ task queue broker + cache |
+| Function | Trigger | Purpose |
+|----------|---------|---------|
+| pipeline_orchestrator | Durable | Coordinates full pipeline |
+| start_pipeline | HTTP POST | Starts orchestration for a county |
+| nightly_pipeline | Timer (2 AM) | Nightly auto-run |
+| ingest_county_activity | Activity | ATTOM API property fetch |
+| detect_pool_activity | Activity | Aerial image + ONNX inference |
+| generate_design_activity | Activity | Azure OpenAI pool design |
+| enrich_contact_activity | Activity | Melissa skip-trace enrichment |
+| api_stats | HTTP GET | Dashboard statistics |
+| api_properties | HTTP GET | Property listing |
+| api_leads | HTTP GET | Top lead listing |
+| api_mailing_labels | HTTP GET | Export mailing labels |
 
-## Flux GitOps Flow
+## Marketplace Packaging
 
-```
-Git push → Flux Source Controller (1m poll)
-  → Kustomization: infrastructure (KEDA, ingress, monitoring)
-    → Kustomization: apps (depends on infra)
-      → Each app deployed from overlays/{dev,prod}
-
-Image push → Flux Image Automation (1m scan)
-  → ImagePolicy selects highest semver tag
-  → ImageUpdateAutomation commits tag update to apps/
-  → Flux reconciles the new image
-```
-
-## Scaling
-
-- **KEDA ScaledObjects** on pool-detection and pool-design scale 1→8 replicas
-  based on Redis queue depth (listLength trigger)
-- **Foundry Local** is CPU-bound; scale by adding replicas (each needs ~16 GB RAM)
-- **Multi-region**: Add a new `clusters/<region>/` directory with region-specific
-  overlays (county FIPS codes, API keys)
+Packaged as an Azure Managed Application:
+- `marketplace/arm/mainTemplate.json` — ARM template deploying all resources
+- `marketplace/ui/createUiDefinition.json` — Portal wizard (4 steps)
+- Published via Partner Center as an Azure Application offer
